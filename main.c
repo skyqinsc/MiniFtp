@@ -6,40 +6,37 @@
 #include "parseconf.h"
 #include "ftpproto.h"
 int main(){
-	char *str="000711";
-	printf("%u\n", str_octal_to_uint(str));
+	printf("======MiniFtp log Copyright ©  Qinsc.======\n");
 	if(getuid() !=0){
 		fprintf(stderr,"miniftpd:must be started as root\n");
 		exit(EXIT_FAILURE);
 	}
-
 	parseconf_load_file(MINIFTPD_CONF);
-	printf("%d %d %u %u %u %u %u %u %u 0%o %u %u:\n",
-		tunable_pasv_enable,
-		tunable_port_enable,
-		tunable_listen_port,
-		tunable_max_clients,
-		tunable_max_per_ip,
-		tunable_accept_timeout,
-		tunable_connect_timeout,
-		tunable_idle_session_timeout,
-		tunable_data_connection_timeout,
-		tunable_local_umask,
-		tunable_upload_max_rate,
-		tunable_download_max_rate
-	);
-	if(tunable_listen_address) printf(" : %s\n",tunable_listen_address);
+	printf("tunable_pasv_enable=%d\n", tunable_pasv_enable);
+	printf("tunable_port_enable=%d\n", tunable_port_enable);
+	printf("tunable_listen_port=%u\n", tunable_listen_port);
+	printf("tunable_max_clients=%u\n", tunable_max_clients);
+	printf("tunable_max_per_ip=%u\n", tunable_max_per_ip);
+	printf("tunable_accept_timeout=%u\n", tunable_accept_timeout);
+	printf("tunable_connect_timeout=%u\n", tunable_connect_timeout);
+	printf("tunable_idle_session_timeout=%u\n", tunable_idle_session_timeout);
+	printf("tunable_data_connection_timeout=%u\n", tunable_data_connection_timeout);
+	printf("tunable_local_umask=0%o\n", tunable_local_umask);
+	printf("tunable_upload_max_rate=%u\n", tunable_upload_max_rate);
+	printf("tunable_download_max_rate=%u\n", tunable_download_max_rate);
+	if(tunable_listen_address) printf("tunable_listen_address=%s\n",tunable_listen_address);
+	
 	session_t sess ={
 		/*控制连接*/
 		0,-1, "","","",
 		//数据连接
-		NULL,-1,
+		-1, NULL,- 1,
 		/*父子进程通道*/
 		-1, -1,
 		//FTP协议状态
 		0
 	};
-	int listenfd = tcp_server(NULL, 5188);
+	int listenfd = tcp_server(tunable_listen_address, 5188);
 	int conn;
 	pid_t pid;
 

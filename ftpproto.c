@@ -38,6 +38,8 @@ static void do_help(session_t *sess);
 
 void ftp_reply(session_t *sess,int status, const char *text);
 void ftp_lreply(session_t *sess,int status, const char *text);
+int port_active(session_t *sess);
+int pasv_active(session_t *sess);
 int get_stransfer_fd(session_t *sess);
 
 int list_common(session_t *sess);
@@ -226,35 +228,55 @@ int list_common(session_t *sess){
 }
 
 int port_active(session_t *sess){
-	if(sess->port_addr) return 1;
+	if(sess->port_addr){
+		if(pasv_active(sess)){
+			fprintf(stderr, "Both PASV And PORT Are Active!");
+			return 0;
+		}
+		return 1;
+	}
 	return 0;
 }
 
 int pasv_active(session_t *sess){
+	if(sess->pasv_listen_fd != -1){
+		if(port_active(sess)){
+			fprintf(stderr, "Both PASV And PORT Are Active!");
+			return 0;
+		}
+		return 1;
+	}
 	return 0;
 }
 
 int get_stransfer_fd(session_t *sess){
 	//检测是否收到port或pasv
-	if(!port_active(sess) && !pasv_active(sess)) return 0;
+	if(!port_active(sess) && !pasv_active(sess)){
+		ftp_reply(sess, FTP_BADSENDCONN, "Use PORT or PASV first.");
+		return 0;
+	}
 	if(port_active(sess)){
 		//socket -> bind 20
 		//tcp_client(20);
 		int fd = tcp_client(0);
-		
 		//connect
 		if(connect_timeout(fd, sess->port_addr, tunable_connect_timeout) < 0){
 			close(fd);
 			return 0;
 		}
-		printf("=====Success====\n");
+		printf("=====Transfer Success====\n");
 		sess->data_fd = fd;
+		if(sess->port_addr){
+			free(sess->port_addr);
+			sess->port_addr = NULL;
+		}
 	}
-	//if(pasv_active(sess)){;}
-
-	if(sess->port_addr){
-		free(sess->port_addr);
-		sess->port_addr = NULL;
+	if(pasv_active(sess)){
+		int conn = accept_timeout(sess->pasv_listen_fd, NULL, tunable_accept_timeout);
+		close(sess->pasv_listen_fd);
+		if(conn < 0) return 0;
+		close(sess->pasv_listen_fd);
+		sess->data_fd = conn;
 	}
 	return 1;
 }
@@ -318,7 +340,27 @@ void do_port(session_t *sess){
 	ftp_reply(sess, FTP_PORTOK,"PORT command successful.Consider using PASV.");
 }
 
-void do_pasv(session_t *sess){}
+void do_pasv(session_t *sess){
+	 //227 Entering Passive Mode (192,168,142,130,215,180).
+	 char ip[16] = {0};
+	 getlocalip(ip);
+	 int fd = tcp_server(ip, 0);
+	 struct sockaddr_in addr;
+	 socklen_t addrlen = sizeof(struct sockaddr);
+	 if(getsockname(fd, (struct sockaddr*)&addr, &addrlen) < 0)
+		 ERR_EXIT("getsockname");
+	 unsigned short port = ntohs(addr.sin_port);
+
+	 unsigned int v[6];
+	 sscanf(ip,"%u.%u.%u.%u",v, v+1, v+2, v+3);
+	 char text[1024] = {0};
+	 sprintf(text, "Entering Passive Mode (%u,%u,%u,%u,%u,%u).",
+		 v[0], v[1], v[2], v[3], port>>8, port&0x00FF);
+	 ftp_reply(sess, FTP_PASVOK, text);
+	 sess->pasv_listen_fd = fd;
+}
+
+
 void do_type(session_t *sess){
 	 if(strcmp(sess->arg, "A") == 0){
 		 sess->is_ascii = 1;
@@ -346,6 +388,7 @@ void do_list(session_t *sess){
 	list_common(sess);
 	//关闭数据套接字
 	close(sess->data_fd);
+	sess->data_fd = -1;
 	//226
 	ftp_reply(sess, FTP_TRANSFEROK, "Directory send OK.");
 }

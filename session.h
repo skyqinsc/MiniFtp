@@ -11,6 +11,7 @@ typedef struct session{
 	char cmd[MAX_COMMAND];
 	char arg[MAX_ARG];
 	//数据连接
+	int pasv_listen_fd;
 	struct sockaddr_in *port_addr;
 	int data_fd;
 	//父子进程通道
