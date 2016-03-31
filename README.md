@@ -24,4 +24,8 @@ MiniFtp服务器：
 *LeapFTP3.01成功连接MiniFtp服务器截图:*
 ![pic of repo](./AppData/MiniFtp.png)
 
+
+*MiniFtp服务器后台日志截图:*
+![pic of repo](./AppData/MiniFtp_log.png)
+
 By Qinsc
