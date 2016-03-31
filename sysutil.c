@@ -1,29 +1,24 @@
 ﻿#include"sysutil.h"
 
-int tcp_client(unsigned short port)
-{
+int tcp_client(unsigned short port){
 	int sock;
 	if((sock = socket(PF_INET,SOCK_STREAM,0))<0)
 		ERR_EXIT("tcp_client");
-	if(port > 0)
-	{
+	if(port > 0){
 		int on =1;
 		if((setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,(const char *)&on,sizeof(on)))<0)
 			ERR_EXIT("setsockopt");
 		char ip[16] = {0};
 		getlocalip(ip);
 		struct sockaddr_in localaddr;
-		bzero(&localaddr,sizeof localaddr);
+		memset(&localaddr, 0, sizeof localaddr);
 		localaddr.sin_family = AF_INET;
 		localaddr.sin_port = htons(port);
 		localaddr.sin_addr.s_addr = inet_addr(ip);
 		if(bind(sock,(struct sockaddr *)&localaddr,sizeof(localaddr))<0)
-		{
 			ERR_EXIT("bind");
-		}
 	}
 	return sock;
-
 }
 
 
@@ -169,7 +164,7 @@ int getlocalip(char *ip)
     struct hostent *hp;
     if((hp= gethostbyname(host))==NULL)
         return -1;
-    strcpy(ip,inet_ntoa(*(struct in_addr *)hp->h_addr));
+    strcpy(ip, inet_ntoa(*(struct in_addr *)hp->h_addr));
     return 0;
 }
 
@@ -198,23 +193,14 @@ int connect_timeout(int fd, struct sockaddr_in *addr, unsigned int wait_seconds)
 			ret = -1;
 			errno = ETIMEDOUT;
 		}
-		else if (ret < 0)
-			return -1;
-		else if (ret == 1)
-		{
+		else if (ret < 0) return -1;
+		else if (ret == 1){
 			int err;
 			socklen_t socklen = sizeof(err);
 			int sockoptret = getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &socklen);
-			if (sockoptret == -1)
-			{
-				return -1;
-			}
-			if (err == 0)
-			{
-				ret = 0;
-			}
-			else
-			{
+			if (sockoptret == -1) return -1;
+			if (err == 0) ret = 0;
+			else{
 				errno = err;
 				ret = -1;
 			}

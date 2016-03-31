@@ -2,7 +2,7 @@
 #include "sysutil.h"
 #include "str.h"
 #include "ftpcodes.h"
-
+#include "tunable.h"
 
 static void do_user(session_t *sess);
 static void do_pass(session_t *sess);
@@ -38,6 +38,9 @@ static void do_help(session_t *sess);
 
 void ftp_reply(session_t *sess,int status, const char *text);
 void ftp_lreply(session_t *sess,int status, const char *text);
+int get_stransfer_fd(session_t *sess);
+
+int list_common(session_t *sess);
 
 typedef struct ftpcmd
 {
@@ -148,6 +151,114 @@ void ftp_lreply(session_t *sess,int status, const char *text){
 	writen(sess->ctrl_fd, buf, strlen(buf));
 }
 
+
+int list_common(session_t *sess){
+	DIR *dir = opendir(".");
+	if(dir == NULL) return 0;
+	struct dirent *dt;
+	struct stat sbuf;
+	while((dt = readdir(dir)) != NULL){
+		if(lstat(dt->d_name, &sbuf) < 0 || dt->d_name[0] == '.') continue;
+		char perms[] = "----------";
+		mode_t mode = sbuf.st_mode;
+		switch (mode & S_IFMT){
+		case S_IFREG:
+			perms[0] = '-';break;
+		case S_IFDIR:
+			perms[0] = 'd';break;
+		case S_IFLNK:
+			perms[0] = 'l';break;
+		case S_IFIFO:
+			perms[0] = 'p';break;
+		case S_IFSOCK:
+			perms[0] = 's';break;
+		case S_IFCHR:
+			perms[0] = 'c';break;
+		case S_IFBLK:
+			perms[0] = 'b';break;
+		default:
+			perms[0] = '?';
+		}
+	
+		if(mode & S_IRUSR) perms[1] = 'r';
+		if(mode & S_IWUSR) perms[2] = 'w';
+		if(mode & S_IXUSR) perms[3] = 'x';
+
+		if(mode & S_IRGRP) perms[4] = 'r';
+		if(mode & S_IWGRP) perms[5] = 'w';
+		if(mode & S_IXGRP) perms[6] = 'x';
+
+		if(mode & S_IROTH) perms[7] = 'r';
+		if(mode & S_IWOTH) perms[8] = 'w';
+		if(mode & S_IXOTH) perms[9] = 'x';
+
+		if(mode & S_ISUID) perms[3] = (perms[3] == 'x') ? 's' : 'S';
+		if(mode & S_ISGID) perms[6] = (perms[5] == 'x') ? 's' : 'S';
+		if(mode & S_ISVTX) perms[9] = (perms[9] == 'x') ? 't' : 'T';
+
+		char buf[1024] = {0};
+		int off = 0;
+		off += sprintf(buf + off, "%s ",perms);
+		off += sprintf(buf + off, "%3d %-8d %-8d ", (int)sbuf.st_nlink, (int)sbuf.st_uid, (int)sbuf.st_gid);
+		off += sprintf(buf + off, "%8lu ", (unsigned long)sbuf.st_size);
+		const char *p_data_format = "%b %e %H:%M";
+		struct timeval tv;
+		gettimeofday(&tv, NULL);
+		time_t local_time = tv.tv_sec;
+		if(sbuf.st_mtime > local_time || local_time - sbuf.st_mtime > 60*60*24*182){
+			p_data_format = "%b %e %Y";
+		}
+		char databuf[64] = {0};
+		strftime(databuf, sizeof(databuf), p_data_format, localtime(&local_time));
+		off += sprintf(buf + off, "%s ", databuf);
+		if(S_ISLNK(sbuf.st_mode)){
+			char tmp[1024] = {0};
+			readlink(dt->d_name, tmp, sizeof(tmp));
+			off += sprintf(buf + off, "%s -> %s\r\n", dt->d_name, tmp);
+		}
+		else
+			off += sprintf(buf + off, "%s\r\n", dt->d_name);
+		//printf("%s", buf);
+		writen(sess->data_fd, buf, strlen(buf));
+	}
+	closedir(dir);
+	return 1;
+}
+
+int port_active(session_t *sess){
+	if(sess->port_addr) return 1;
+	return 0;
+}
+
+int pasv_active(session_t *sess){
+	return 0;
+}
+
+int get_stransfer_fd(session_t *sess){
+	//检测是否收到port或pasv
+	if(!port_active(sess) && !pasv_active(sess)) return 0;
+	if(port_active(sess)){
+		//socket -> bind 20
+		//tcp_client(20);
+		int fd = tcp_client(0);
+		
+		//connect
+		if(connect_timeout(fd, sess->port_addr, tunable_connect_timeout) < 0){
+			close(fd);
+			return 0;
+		}
+		printf("=====Success====\n");
+		sess->data_fd = fd;
+	}
+	//if(pasv_active(sess)){;}
+
+	if(sess->port_addr){
+		free(sess->port_addr);
+		sess->port_addr = NULL;
+	}
+	return 1;
+}
+
 void do_user(session_t *sess){
 	//USER qinsc
 	struct passwd *pw = getpwnam(sess->arg);
@@ -187,7 +298,26 @@ void do_pass(session_t *sess){
 void do_cwd(session_t *sess){}
 void do_cdup(session_t *sess){}
 void do_quit(session_t *sess){}
-void do_port(session_t *sess){}
+void do_port(session_t *sess){
+	//PORT 192,168,142,1,221,142
+	unsigned int v[6];
+	sscanf(sess->arg,"%u,%u,%u,%u,%u,%u",&v[2],&v[3],&v[4],&v[5],&v[0],&v[1]);
+	sess->port_addr = (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in));
+	memset(sess->port_addr, 0, sizeof(struct sockaddr_in));
+	sess->port_addr->sin_family=AF_INET;
+	unsigned char *p = (unsigned char *)&sess->port_addr->sin_port;
+	p[0] = v[0];
+	p[1] = v[1];
+
+	p = (unsigned char*)&sess->port_addr->sin_addr;
+	p[0] = v[2];
+	p[1] = v[3];
+	p[2] = v[4];
+	p[3] = v[5];
+
+	ftp_reply(sess, FTP_PORTOK,"PORT command successful.Consider using PASV.");
+}
+
 void do_pasv(session_t *sess){}
 void do_type(session_t *sess){
 	 if(strcmp(sess->arg, "A") == 0){
@@ -207,7 +337,18 @@ void do_mode(session_t *sess){}
 void do_retr(session_t *sess){}
 void do_stor(session_t *sess){}
 void do_appe(session_t *sess){}
-void do_list(session_t *sess){}
+void do_list(session_t *sess){
+	//创建数据连接
+	if(get_stransfer_fd(sess) == 0) return;
+	//150
+	ftp_reply(sess, FTP_DATACONN, "Here comes the directory listing.");
+	//传输列表
+	list_common(sess);
+	//关闭数据套接字
+	close(sess->data_fd);
+	//226
+	ftp_reply(sess, FTP_TRANSFEROK, "Directory send OK.");
+}
 void do_nlst(session_t *sess){}
 void do_rest(session_t *sess){}
 void do_abor(session_t *sess){}

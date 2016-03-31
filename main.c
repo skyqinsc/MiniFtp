@@ -4,7 +4,7 @@
 #include "str.h"
 #include "tunable.h"
 #include "parseconf.h"
-
+#include "ftpproto.h"
 int main(){
 	char *str="000711";
 	printf("%u\n", str_octal_to_uint(str));
@@ -32,6 +32,8 @@ int main(){
 	session_t sess ={
 		/*控制连接*/
 		0,-1, "","","",
+		//数据连接
+		NULL,-1,
 		/*父子进程通道*/
 		-1, -1,
 		//FTP协议状态
