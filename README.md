@@ -14,9 +14,13 @@ MiniFtp服务器：
 * 上传与下载，断点续传
 * 上传/下载限速
 * 连接数限制
+
 * * *
+
 **(此Repo仅作个人项目，如需fork，请注明出处)**
+
 * * *
+
 *LeapFTP3.01成功连接MiniFtp服务器截图:*
 ![pic of repo](./AppData/MiniFtp.png)
 
