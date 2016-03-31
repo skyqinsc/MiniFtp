@@ -7,6 +7,7 @@ MiniFtp服务器：
 
 技术：作为一个并发服务器模型，涉及多进程协作，进程通信，I/O复用模型，网络编程相关技术；
 
+
 功能实现：
 * 主被动传输模式
 * FTP基本命令
@@ -15,5 +16,8 @@ MiniFtp服务器：
 * 连接数限制
 
 (此Repo仅作个人项目，如需fork，请注明出处)
+
+![pic of repo](./AppData/MiniFtp.png)
+
 
 By Qinsc
