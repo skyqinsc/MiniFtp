@@ -1,3 +1,15 @@
+/* Qinsc's ftpserver */ 
+
+/* This is a simple ftpserver. 
+ * Created September 2015 by Shuchang Qin 
+ * From : Wuhan University of Science and Technology ,Network Engineering
+ * E-mail: skyqinsc@gmail.com
+ * Repo URL: https://github.com/skyqinsc/MiniFtp
+ */ 
+
+
+
+
 #include "common.h"
 #include "sysutil.h"
 #include "session.h"
@@ -36,6 +48,7 @@ int main(){
 		//FTP协议状态
 		0
 	};
+	signal(SIGCHLD, SIG_IGN);
 	int listenfd = tcp_server(tunable_listen_address, 5188);
 	int conn;
 	pid_t pid;

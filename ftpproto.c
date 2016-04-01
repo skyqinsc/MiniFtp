@@ -111,7 +111,7 @@ void handle_child(session_t *sess){
 		ret = readline(sess->ctrl_fd, sess->cmdline, MAX_COMMAND_LINE);
 		if(ret == -1)
 			ERR_EXIT("readline");
-		else if(ret == 0)
+		else if(ret == 0) //客户端断开连接，服务进程退出
 			exit(EXIT_SUCCESS);
 		//去除\r\n
 		str_trim_crlf(sess->cmdline);
@@ -220,7 +220,7 @@ int list_common(session_t *sess){
 		}
 		else
 			off += sprintf(buf + off, "%s\r\n", dt->d_name);
-		//printf("%s", buf);
+		printf("%s", buf);
 		writen(sess->data_fd, buf, strlen(buf));
 	}
 	closedir(dir);
@@ -249,23 +249,31 @@ int pasv_active(session_t *sess){
 	return 0;
 }
 
+int get_port_fd(session_t *sess){
+	priv_sock_send_cmd(sess->child_fd,  PRIV_SOCK_GET_DATA_SOCK);
+	unsigned short port = ntohs(sess->port_addr->sin_port);
+	char *ip = inet_ntoa(sess->port_addr->sin_addr);
+	priv_sock_send_int(sess->child_fd,(int)port);
+	priv_sock_send_buf(sess->child_fd, ip, strlen(ip));
+
+	char res = priv_sock_get_result(sess->child_fd);
+
+	if(res == PRIV_SOCK_RESULT_BAD) return 0;
+	else if(res == PRIV_SOCK_RESULT_OK){
+		sess->data_fd = recv_fd(sess->child_fd);
+	}
+	return 1;
+}
+
 int get_stransfer_fd(session_t *sess){
 	//检测是否收到port或pasv
 	if(!port_active(sess) && !pasv_active(sess)){
 		ftp_reply(sess, FTP_BADSENDCONN, "Use PORT or PASV first.");
 		return 0;
 	}
+	int ret = 1;
 	if(port_active(sess)){
-		//socket -> bind 20
-		//tcp_client(20);
-		int fd = tcp_client(0);
-		//connect
-		if(connect_timeout(fd, sess->port_addr, tunable_connect_timeout) < 0){
-			close(fd);
-			return 0;
-		}
-		printf("=====Transfer Success====\n");
-		sess->data_fd = fd;
+		if(get_port_fd(sess) == 0) ret = 0;
 		if(sess->port_addr){
 			free(sess->port_addr);
 			sess->port_addr = NULL;
@@ -278,7 +286,7 @@ int get_stransfer_fd(session_t *sess){
 		close(sess->pasv_listen_fd);
 		sess->data_fd = conn;
 	}
-	return 1;
+	return ret;
 }
 
 void do_user(session_t *sess){

@@ -1,6 +1,16 @@
 # MiniFtp
 
 [MiniFtp v1.0](https://github.com/skyqinsc/MiniFtp/) Copyright © Qinsc
+
+
+## Qinsc's ftpserver
+
+* This is a simple ftpserver. 
+* Created September 2015 by Shuchang Qin 
+* From : Wuhan University of Science and Technology ,Network Engineering
+* E-mail: skyqinsc@gmail.com
+* Repo URL: https://github.com/skyqinsc/MiniFtp
+
 MiniFtp服务器：
 
 介绍：本服务器，实现FTP基本命令，主被动传输模式。

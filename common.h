@@ -9,6 +9,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <pwd.h>
 #include <shadow.h>
 #include <crypt.h>
@@ -16,6 +17,8 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <linux/capability.h>
+#include <sys/syscall.h>
 
 #include <stdlib.h>
 #include <stdio.h>
