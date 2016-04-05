@@ -14,12 +14,24 @@ typedef struct session{
 	int pasv_listen_fd;
 	struct sockaddr_in *port_addr;
 	int data_fd;
+	int data_process;
+	//限速
+	unsigned int bw_upload_max_rate;
+	unsigned int bw_download_max_rate;
+	long bw_transfer_start_sec;
+	long bw_transfer_start_usec;
 	//父子进程通道
 	int parent_fd;
 	int child_fd;
 
 	//FTP协议状态
 	int is_ascii;
+	long long restart_pos;
+	char *rnfr_name;
+	int abor_received;
+
+	//连接数限制
+	unsigned int num_clients;
 }session_t;
 
 void begin_session(session_t  *sess);

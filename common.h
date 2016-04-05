@@ -19,6 +19,8 @@
 #include <dirent.h>
 #include <linux/capability.h>
 #include <sys/syscall.h>
+#include <sys/sendfile.h>
+#include <sys/wait.h>
 
 #include <stdlib.h>
 #include <stdio.h>

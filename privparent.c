@@ -36,7 +36,7 @@ void get_privilege(){
 }
 
 void handle_parent(session_t *sess){
-
+	get_privilege();
 	while(1){
 		char cmd = priv_sock_get_cmd(sess->parent_fd);
 		//解析内部命令
@@ -61,8 +61,6 @@ void handle_parent(session_t *sess){
 }
 
 void privop_pasv_get_data_sock(session_t *sess){
-	get_privilege();
-	
 	unsigned short port = (unsigned short)priv_sock_get_int(sess->parent_fd);
 	char ip[16] = {0};
 	priv_sock_recv_buf(sess->parent_fd, ip, sizeof(ip));
@@ -90,13 +88,33 @@ void privop_pasv_get_data_sock(session_t *sess){
 	close(fd);
 }
 void privop_pasv_active(session_t *sess){
-
+	int active = 0;
+	if(sess->pasv_listen_fd != -1) active = 1;
+	priv_sock_send_int(sess->parent_fd, active);
 }
 void privop_pasv_listen(session_t *sess){
+	char ip[16] = {0};
+	getlocalip(ip);
 
+	int fd = tcp_server(ip, 0);
+	struct sockaddr_in addr;
+	socklen_t addrlen = sizeof(struct sockaddr);
+	if(getsockname(fd, (struct sockaddr*)&addr, &addrlen) < 0)
+		ERR_EXIT("getsockname");
+	unsigned short port = ntohs(addr.sin_port);
+	priv_sock_send_int(sess->parent_fd, (int)port);
+	sess->pasv_listen_fd = fd;
 }
 void privop_pasv_accept(session_t *sess){
-
-
+	int conn = accept_timeout(sess->pasv_listen_fd, NULL, tunable_accept_timeout);
+	close(sess->pasv_listen_fd);
+	sess->pasv_listen_fd = -1;
+	if(conn < 0){
+		priv_sock_send_result(sess->parent_fd, PRIV_SOCK_RESULT_BAD);
+		return;
+	}
+	priv_sock_send_result(sess->parent_fd, PRIV_SOCK_RESULT_OK);
+	priv_sock_send_fd(sess->parent_fd, conn);
+	close(conn);
 }
 

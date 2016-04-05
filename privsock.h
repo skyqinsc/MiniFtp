@@ -18,16 +18,6 @@
 
 ///////////
 
-//FTP 服务进程间向nobody进程请求的命令
-#define PRIV_SOCK_GET_DATA_SOCK 	1
-#define PRIV_SOCK_PASV_ACTIVE		2
-#define PRIV_SOCK_PASV_LISTEN		3
-#define PRIV_SOCK_PASV_ACCEPT		4
-
-//nobody进程对FTP服务进程的应答
-#define PRIV_SOCK_RESULT_OK			1
-#define PRIV_SOCK_RESULT_BAD		2
-
 void priv_sock_init(session_t *sess);
 void priv_sock_close(session_t *sess);
 void priv_sock_set_parent_context(session_t *sess);

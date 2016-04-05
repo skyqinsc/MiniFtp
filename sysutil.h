@@ -25,5 +25,20 @@ ssize_t readline(int sockfd,void* buf,size_t maxline);
 void send_fd(int sock_fd,int fd); // 发送fd文件描述符
 int recv_fd(const int sock_fd); // 接受文件描述符
 
+const char * statbuf_get_perms(struct stat *sbuf);
+const char *statbuf_get_date(struct stat *sbuf);
+
+int lock_file_read(int fd);
+int lock_file_write(int fd);
+int unlock_file(int fd);
+
+long get_time_sec();
+long get_time_usec();
+
+void nano_sleep(double sec);
+
+void activate_obbinline(int fd);
+void activate_sigurg(int fd);
+
 #endif /* _SYS_UTIL_H_ */
 

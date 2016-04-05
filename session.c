@@ -4,7 +4,7 @@
 #include "privsock.h"
 
 void begin_session(session_t *sess){
-
+	activate_obbinline(sess->ctrl_fd);
 	priv_sock_init(sess);
 	pid_t pid;
 	pid = fork();
@@ -16,6 +16,7 @@ void begin_session(session_t *sess){
 		handle_child(sess);
 	}
 	else{
+
 		//nobody进程
 		priv_sock_set_parent_context(sess);
 		handle_parent(sess);
