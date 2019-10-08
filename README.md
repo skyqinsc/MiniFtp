@@ -1,6 +1,7 @@
 # MiniFtp
 
 [MiniFtp v1.0](https://github.com/skyqinsc/MiniFtp/) Copyright © Qinsc
+* Now, this github account is deprecated, please access https://github.com/aigo-tech/MiniFtp
 
 
 ## Qinsc's ftpserver
